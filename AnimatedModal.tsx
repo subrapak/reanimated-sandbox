@@ -1,36 +1,100 @@
-import React, { FunctionComponent } from 'react';
-import { Text, StyleSheet, Dimensions, View } from 'react-native';
+import React, { Dispatch, FunctionComponent, useEffect, useState } from 'react';
+import {
+  Text,
+  StyleSheet,
+  Dimensions,
+  View,
+  TextInput,
+  Keyboard,
+} from 'react-native';
 import { FlatList, TouchableOpacity } from 'react-native-gesture-handler';
-import Animated, { Easing } from 'react-native-reanimated';
+import Animated, { Easing, Value } from 'react-native-reanimated';
+import Icon from 'react-native-vector-icons/Ionicons';
 
 const { width, height } = Dimensions.get('window');
 
 type Props = {
   translateY: Animated.Value<number>;
   animatedHeight: Animated.Value<number>;
+  datalist: string[];
+  autocompleteText: string;
+  setAutocompleteText: Dispatch<React.SetStateAction<string>>;
 };
-
-const mockData: string[] = Array.from(Array(10).keys()).map(
-  (item: number) => `Item: ${item}`,
-);
-console.log(mockData);
-const renderItem = ({ item }: { item: string }) => <Text>{item}</Text>;
 
 const AnimatedModal: FunctionComponent<Props> = ({
   translateY,
   animatedHeight,
+  datalist,
+  autocompleteText,
+  setAutocompleteText,
 }: Props) => {
-  const closeModal = () => {
+  const listMaxHeight = new Value<number>(height * 0.8);
+
+  const closeModal = (item?: string) => {
     Animated.timing(translateY, {
       toValue: height,
       duration: 300,
       easing: Easing.ease,
-    }).start();
+    }).start(() => {
+      item && setAutocompleteText(item);
+      setSearchBarText('');
+      setFilterData(originalData);
+      Keyboard.dismiss();
+    });
     Animated.timing(animatedHeight, {
       toValue: 0,
       duration: 500,
       easing: Easing.ease,
     }).start();
+  };
+  useEffect(() => {
+    Keyboard.addListener('keyboardDidShow', _keyboardDidShow);
+    Keyboard.addListener('keyboardDidHide', _keyboardDidHide);
+
+    // cleanup function
+    return () => {
+      Keyboard.removeListener('keyboardDidShow', _keyboardDidShow);
+      Keyboard.removeListener('keyboardDidHide', _keyboardDidHide);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const _keyboardDidShow = () => {
+    Animated.timing(listMaxHeight, {
+      toValue: height * 0.5,
+      duration: 500,
+      easing: Easing.ease,
+    }).start();
+  };
+
+  const _keyboardDidHide = () => {
+    Animated.timing(listMaxHeight, {
+      toValue: height * 0.8,
+      duration: 300,
+      easing: Easing.ease,
+    }).start();
+  };
+
+  const renderItem = ({ item }: { item: string }) => {
+    return (
+      <TouchableOpacity
+        style={styles.touchableOpacity}
+        onPress={() => closeModal(item)}>
+        <Text style={styles.renderText}>{item}</Text>
+      </TouchableOpacity>
+    );
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [originalData, setOriginalData] = useState<string[]>(datalist);
+  const [filterData, setFilterData] = useState<string[]>(datalist);
+  const [searchBarText, setSearchBarText] = useState<string>(autocompleteText);
+  const handleChangeSearchBarText = (text: string) => {
+    setSearchBarText(text);
+
+    text.length
+      ? setFilterData(originalData.filter((item) => item.includes(text)))
+      : setFilterData(originalData);
   };
   return (
     <>
@@ -41,14 +105,28 @@ const AnimatedModal: FunctionComponent<Props> = ({
           transform: [{ translateY: translateY }],
         }}>
         <View style={styles.mainContent}>
-          <View style={styles.searchBar}></View>
-          <View>
+          <View style={styles.searchBar}>
+            <TextInput
+              style={styles.textInput}
+              value={searchBarText}
+              onChangeText={handleChangeSearchBarText}
+              autoCorrect={false}
+            />
+            <Icon
+              style={styles.iconStyle}
+              name="close"
+              size={35}
+              onPress={() => closeModal()}
+            />
+          </View>
+          <Animated.View
+            style={[styles.animatedView, { height: listMaxHeight }]}>
             <FlatList
-              data={mockData}
+              data={filterData}
               renderItem={renderItem}
               keyExtractor={(item: string) => item}
             />
-          </View>
+          </Animated.View>
         </View>
       </Animated.View>
     </>
@@ -59,13 +137,49 @@ export default AnimatedModal;
 
 const styles = StyleSheet.create({
   searchBar: {
-    height: 60,
-    backgroundColor: 'yellow',
+    // height: '5%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    borderRadius: 10,
+    shadowOffset: { width: 2, height: 2 },
+    shadowColor: 'black',
+    shadowRadius: 5,
+    shadowOpacity: 0.5,
+    backgroundColor: 'white',
+    padding: 10,
+  },
+  renderText: { fontSize: 18, color: 'grey' },
+  animatedView: {
+    overflow: 'hidden',
+    paddingVertical: 5,
+  },
+  iconStyle: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 0,
   },
   mainContent: {
     width: '100%',
     height: '100%',
-    backgroundColor: 'pink',
+    padding: 10,
+  },
+  textInput: {
+    width: 350,
+    height: '100%',
+    backgroundColor: 'white',
+    borderColor: 'white',
+    borderWidth: 1,
+    fontSize: 25,
+    padding: 0,
+  },
+  touchableOpacity: {
+    width: '100%',
+    backgroundColor: '#f2f2f2f',
+    borderBottomColor: 'grey',
+    borderBottomWidth: 1,
+    padding: 15,
   },
   animatedModal: {
     position: 'absolute',
@@ -77,7 +191,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     paddingVertical: 50,
     justifyContent: 'flex-start',
-    backgroundColor: '#f2f2f2',
+    backgroundColor: 'white',
     alignItems: 'center',
   },
 });
