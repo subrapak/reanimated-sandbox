@@ -9,44 +9,41 @@
  */
 
 import React, { useState } from 'react';
-import {
-  View,
-  SafeAreaView,
-  Text,
-  PanResponder,
-  Dimensions,
-} from 'react-native';
+import { View, SafeAreaView, Text, Dimensions, StyleSheet } from 'react-native';
 import AnimatedModal from './AnimatedModal';
 
 import {
-  GestureHandlerStateChangeNativeEvent,
-  PanGestureHandlerEventExtra,
+  // GestureHandlerStateChangeNativeEvent,
+  // PanGestureHandlerEventExtra,
   State,
   TapGestureHandler,
   TapGestureHandlerGestureEvent,
-  TapGestureHandlerStateChangeEvent,
 } from 'react-native-gesture-handler';
-import Animated, {
-  add,
-  block,
-  cond,
-  Easing,
-  eq,
-  event,
-  set,
-  timing,
-  Value,
-} from 'react-native-reanimated';
+import Animated, { Easing, Value } from 'react-native-reanimated';
 
-type PanGestureHandlerNativeEventType = GestureHandlerStateChangeNativeEvent &
-  PanGestureHandlerEventExtra;
+// type PanGestureHandlerNativeEventType = GestureHandlerStateChangeNativeEvent &
+//   PanGestureHandlerEventExtra;
 
-const { width, height } = Dimensions.get('window');
+const { height } = Dimensions.get('window');
 const App = () => {
   const modalHeight = new Value<number>(0);
   const modalTranslateY = new Value<number>(height);
-  const [text, setText] = useState<string>('default');
+  const mainTextOpacity = new Value<number>(1);
+  const [mainText, setMainText] = useState<string>('');
   const handleTapStateChange = (event: TapGestureHandlerGestureEvent) => {
+    if (event.nativeEvent.state === State.BEGAN) {
+      Animated.timing(mainTextOpacity, {
+        toValue: 0.2,
+        duration: 50,
+        easing: Easing.ease,
+      }).start();
+    } else {
+      Animated.timing(mainTextOpacity, {
+        toValue: 1,
+        duration: 50,
+        easing: Easing.ease,
+      }).start();
+    }
     Animated.timing(modalTranslateY, {
       toValue: 0,
       duration: 300,
@@ -57,41 +54,36 @@ const App = () => {
       duration: 300,
       easing: Easing.sin,
     }).start();
-    console.log('hi');
-    console.log('event', event.nativeEvent);
   };
 
-  const translateX = new Value<number>();
-  const translateY = new Value<number>();
-  const offsetX = new Value<number>();
-  const offsetY = new Value<number>();
-  const panHandler = event(
-    [
-      {
-        nativeEvent: ({
-          translationX: x,
-          translationY: y,
-          state,
-        }: PanGestureHandlerNativeEventType) =>
-          block([
-            set(translateX, add(x, offsetX)),
-            set(translateY, add(y, offsetY)),
-            cond(eq(state, State.END), [
-              set(offsetX, add(offsetX, x)),
-              set(offsetY, add(offsetY, y)),
-            ]),
-          ]),
-      },
-    ],
-    { useNativeDriver: true },
-  );
+  // const translateX = new Value<number>();
+  // const translateY = new Value<number>();
+  // const offsetX = new Value<number>();
+  // const offsetY = new Value<number>();
+  // const panHandler = reanimatedEvent(
+  //   [
+  //     {
+  //       nativeEvent: ({
+  //         translationX: x,
+  //         translationY: y,
+  //         state,
+  //       }: PanGestureHandlerNativeEventType) =>
+  //         block([
+  //           set(translateX, add(x, offsetX)),
+  //           set(translateY, add(y, offsetY)),
+  //           cond(eq(state, State.END), [
+  //             set(offsetX, add(offsetX, x)),
+  //             set(offsetY, add(offsetY, y)),
+  //           ]),
+  //         ]),
+  //     },
+  //   ],
+  //   { useNativeDriver: true },
+  // );
 
   return (
-    <SafeAreaView
-      style={{
-        flex: 1,
-      }}>
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+    <SafeAreaView style={styles.flexOne}>
+      <View style={styles.mainViewStyle}>
         {/* <PanGestureHandler
           maxPointers={1}
           onHandlerStateChange={panHandler}
@@ -112,27 +104,51 @@ const App = () => {
             ]}
           />
         </PanGestureHandler> */}
-
         <TapGestureHandler
           onHandlerStateChange={handleTapStateChange}
           numberOfTaps={1}>
-          <View
-            style={{
-              padding: 10,
-              width: 300,
-              borderColor: 'grey',
-              borderWidth: 1,
-            }}>
-            <Text>{text}</Text>
-          </View>
+          <Animated.View
+            style={[styles.animatedViewStyle, { opacity: mainTextOpacity }]}>
+            <Text style={styles.mainText}>{mainText}</Text>
+          </Animated.View>
         </TapGestureHandler>
       </View>
       <AnimatedModal
         animatedHeight={modalHeight}
         translateY={modalTranslateY}
+        datalist={Array.from(Array(50).keys()).map(
+          (item: number) => `Val: ${item}`,
+        )}
+        autocompleteText={mainText}
+        setAutocompleteText={setMainText}
       />
     </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  flexOne: {
+    flex: 1,
+  },
+  mainText: {
+    fontSize: 25,
+  },
+  animatedViewStyle: {
+    flexDirection: 'row',
+    borderRadius: 10,
+    shadowOffset: { width: 2, height: 2 },
+    shadowColor: 'black',
+    shadowRadius: 5,
+    shadowOpacity: 0.5,
+    backgroundColor: 'white',
+    padding: 10,
+    width: 200,
+  },
+  mainViewStyle: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});
 
 export default App;
